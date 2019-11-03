@@ -1,4 +1,3 @@
-extern crate vec_map;
 extern crate bit_set;
 
 pub use regex::Regex;
