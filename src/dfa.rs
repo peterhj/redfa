@@ -1,6 +1,7 @@
 use derivatives::Differentiable;
 use std::collections::{BTreeMap, BTreeSet, VecDeque};
-use std::ops::{Index};
+use std::mem::replace;
+use std::ops::Index;
 use bit_set::BitSet;
 
 struct VecMap<T> {
@@ -14,12 +15,11 @@ impl<T> VecMap<T> {
         }
     }
 
-    fn insert(&mut self, index: usize, value: T) -> Option<T> {
-        if self.buf.len() <= index {
+    fn insert(&mut self, index: usize, new_value: T) -> Option<T> {
+        if self.buf.len() < index + 1 {
             self.buf.resize_with(index + 1, || None);
         }
-        let old_value = self.buf[index].take();
-        self.buf[index] = Some(value);
+        let old_value = replace(&mut self.buf[index], Some(new_value));
         old_value
     }
 }
