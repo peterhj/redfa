@@ -99,12 +99,6 @@ fn blocks_for_bits_u32(bits: usize) -> usize {
     }
 }
 
-// Computes the bitmask for the final word of the vector
-fn mask_for_bits_u32(bits: usize) -> u32 {
-    // Note especially that a perfect multiple of U32_BITS should mask all 1s.
-    (!0) >> ((32 - bits % 32) % 32)
-}
-
 pub struct BitSet {
     nbits: usize,
     storage: Vec<u32>
@@ -170,8 +164,8 @@ impl BitSet {
     // An operation might screw up the unused bits in the last block of the
     // `BitVec`. As per (3), it's assumed to be all 0s. This method fixes it up.
     fn fix_last_block(&mut self) {
-        if let Some((last_block, used_bits)) = self.last_block_mut_with_mask() {
-            *last_block = *last_block & used_bits;
+        if let Some((last_block, mask)) = self.last_block_mut_with_mask() {
+            *last_block = *last_block & mask;
         }
     }
 
@@ -186,9 +180,10 @@ impl BitSet {
 
         // Correct the old tail word, setting or clearing formerly unused bits
         let num_cur_blocks = blocks_for_bits_u32(self.nbits);
-        if self.nbits % 32 > 0 {
-            let mask = mask_for_bits_u32(self.nbits);
+        let old_extra_bits = self.nbits % 32;
+        if old_extra_bits > 0 {
             if value {
+                let mask = (1 << old_extra_bits) - 1;
                 let block = &mut self.storage[num_cur_blocks - 1];
                 *block = *block | !mask;
             } else {
