@@ -1,39 +1,6 @@
+use colls::{BitSet, VecMap};
 use derivatives::Differentiable;
 use std::collections::{BTreeMap, BTreeSet, VecDeque};
-use std::mem::replace;
-use std::ops::Index;
-use bit_set::BitSet;
-
-struct VecMap<T> {
-    buf: Vec<Option<T>>,
-}
-
-impl<T> VecMap<T> {
-    fn with_capacity(cap: usize) -> VecMap<T> {
-        VecMap{
-            buf: Vec::with_capacity(cap),
-        }
-    }
-
-    fn insert(&mut self, index: usize, new_value: T) -> Option<T> {
-        if self.buf.len() < index + 1 {
-            self.buf.resize_with(index + 1, || None);
-        }
-        let old_value = replace(&mut self.buf[index], Some(new_value));
-        old_value
-    }
-}
-
-impl<T> Index<usize> for VecMap<T> {
-    type Output = T;
-
-    fn index(&self, index: usize) -> &T {
-        match &self.buf[index] {
-            &None => panic!("redfa::dfa::VecMap: invalid index"),
-            &Some(ref value) => value,
-        }
-    }
-}
 
 /// A state in a DFA.
 #[derive(Debug, Clone)]

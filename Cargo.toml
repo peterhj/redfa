@@ -12,14 +12,6 @@ documentation = "http://goffrie.github.io/redfa"
 license = "MIT OR Apache-2.0"
 keywords = ["regex", "dfa"]
 
-[features]
-
-unstable = []
-
 [lib]
 
 name = "redfa"
-
-[dependencies]
-
-bit-set = "0.2.0"
