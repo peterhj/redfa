@@ -143,30 +143,10 @@ impl BitSet {
         assert!(i < self.nbits, "index out of bounds: {:?} >= {:?}", i, self.nbits);
         let (w, b) = (i / 32, i % 32);
         let flag = 1 << b;
-        let val = if x { self.storage[w] | flag }
-                  else { self.storage[w] & !flag };
-        self.storage[w] = val;
-    }
-
-    // Helper for procedures involving spare space in the last block.
-    #[inline]
-    fn last_block_mut_with_mask(&mut self) -> Option<(&mut u32, u32)> {
-        let extra_bits = self.nbits % 32;
-        if extra_bits > 0 {
-            let mask = (1 << extra_bits) - 1;
-            let storage_len = self.storage.len();
-            Some((&mut self.storage[storage_len - 1], mask))
-        } else {
-            None
-        }
-    }
-
-    // An operation might screw up the unused bits in the last block of the
-    // `BitVec`. As per (3), it's assumed to be all 0s. This method fixes it up.
-    fn fix_last_block(&mut self) {
-        if let Some((last_block, mask)) = self.last_block_mut_with_mask() {
-            *last_block = *last_block & mask;
-        }
+        let block = &mut self.storage[w];
+        let val = if x { *block | flag }
+                  else { *block & !flag };
+        *block = val;
     }
 
     fn grow(&mut self, n: usize, value: bool) {
@@ -179,12 +159,12 @@ impl BitSet {
         let full_value = if value { !0 } else { 0 };
 
         // Correct the old tail word, setting or clearing formerly unused bits
-        let num_cur_blocks = blocks_for_bits_u32(self.nbits);
-        let old_extra_bits = self.nbits % 32;
-        if old_extra_bits > 0 {
+        let cur_nblocks = blocks_for_bits_u32(self.nbits);
+        let cur_extra_bits = self.nbits % 32;
+        if cur_extra_bits > 0 {
             if value {
-                let mask = (1 << old_extra_bits) - 1;
-                let block = &mut self.storage[num_cur_blocks - 1];
+                let mask = (1 << cur_extra_bits) - 1;
+                let block = &mut self.storage[cur_nblocks - 1];
                 *block = *block | !mask;
             } else {
                 // Extra bits are already zero by invariant.
@@ -193,7 +173,7 @@ impl BitSet {
 
         // Fill in words after the old tail word
         let stop_idx = min(self.storage.len(), new_nblocks);
-        for idx in num_cur_blocks .. stop_idx {
+        for idx in cur_nblocks .. stop_idx {
             self.storage[idx] = full_value;
         }
 
@@ -205,7 +185,16 @@ impl BitSet {
         // Adjust internal bit count
         self.nbits = new_nbits;
 
-        self.fix_last_block();
+        // Maintain invariant (was call `fix_last_block`:
+        // An operation might screw up the unused bits in the last block of the
+        // `BitVec`. As per (3), it's assumed to be all 0s. This method fixes it up.)
+        let new_extra_bits = self.nbits % 32;
+        if new_extra_bits > 0 {
+            let mask = (1 << new_extra_bits) - 1;
+            let storage_len = self.storage.len();
+            let last_block = &mut self.storage[storage_len - 1];
+            *last_block = *last_block & mask;
+        }
     }
 
     pub fn insert(&mut self, value: usize) -> bool {
